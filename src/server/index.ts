@@ -1,40 +1,32 @@
 //import 'babel-polyfill';
 import { Device } from './device';
+import { Iadapter } from './Iadapter';
 
-import util			= require('util');
-import events	= require('events');
+import util	= require('util');
+import events = require('events');
 import net	= require('net');
 import dgram = require('dgram');
 
 // https://github.com/RisingStack/node-typescript-starter
 export default class Server extends events.EventEmitter {
 
-        private connection: any = {};
+        private connections: any = {};
         private devices:Array<Device> = [];
-        private device_adapter:any = null;
+		private opts:object;
 
-		constructor(private opts:any) {
+		constructor(private adapter:Iadapter) {
 			super();
-			let defaults = {
-				debug: false,
-				port:	8080,
-				device_adapter:	false,
-				connection: 'TCP'
-			};
 
-			this.opts = Object.assign(defaults, opts);
 			return this;
 		}
 
-		setAdapter(adapter:any){
-			if (typeof adapter.adapter != 'function')
-				throw 'The adapter needs an adpater() method to start an instance of it';
+		private setAdapter(adapter:Iadapter){
 
-			this.device_adapter = adapter;
+			this.adapter = adapter;
 		}
 
-		getAdapter() {
-			return this.device_adapter;
+		private getAdapter() {
+			return this.adapter;
 		}
 
 		async run() {
@@ -42,19 +34,18 @@ export default class Server extends events.EventEmitter {
 				let that = this;
 				that.emit('before_init');
 
-				if (that.opts.device_adapter === false)
+				if (!that.adapter)
 					throw 'The app don\'t set the device_adapter to use. Which model is sending data to this server?';
 
-				if(typeof that.opts.device_adapter == 'string')
-					throw new Error('Adapter is a string object');
-
-				that.setAdapter(this.opts.device_adapter);
-				that.connections = await that.setServerProtocols(this._opts.connections, this._opts.port);
+				that.setAdapter(this.adapter);
+				that.connections = await that.setServerProtocols(that.adapter.connections, that.adapter.port);
 
 				that.emit('init');
 
 				/* FINAL INIT MESSAGE */
-				//console.log(`LISTENER running at port ${that._opts.port}`, `MODEL: ${that.getAdapter().model_name}`);
+				if(that.adapter.debug)
+					console.log(`LISTENER running at port ${that.adapter.port}`, `MODEL: ${that.adapter.connection_name}`);
+
 				return that.connections;
 			} catch (error) {
 				console.error(error);
@@ -62,13 +53,13 @@ export default class Server extends events.EventEmitter {
 
 		}
 
-		setServerProtocols(connections, port){
+		private setServerProtocols(connections:any, port:number){
 			let that = this;
 			return new Promise(async (resolve, rejected) => {
 				try {
 					let typeConnections = (typeof connections == 'string')? [ connections ] : connections;
-					let servers = { tcp: null, udp: null };
-					typeConnections.forEach(async type => {
+					let servers = { tcp: {}, udp: {} };
+					typeConnections.forEach(async (type:string) => {
 						switch (type) {
 							case 'TCP':
 								servers.tcp = await that.createTcpServer(port);
@@ -76,6 +67,8 @@ export default class Server extends events.EventEmitter {
 							case 'UDP':
 								servers.udp = await that.createUdpServer(port);
 								break;
+							default:
+								return;
 						}
 					});
 
@@ -86,7 +79,7 @@ export default class Server extends events.EventEmitter {
 			});
 		}
 
-		setListenerDevice(device){
+		private setListenerDevice(device:Device){
 			const deviceId = device.UID;
 			let that = this;
 			let localDevice = this.devices.find(_device => _device.UID === deviceId);
@@ -102,6 +95,8 @@ export default class Server extends events.EventEmitter {
 			});
 
 			device.on('ping', msg => {
+				console.log('message');
+				
 				that.emit('tracker', msg, device)
 			});
 
@@ -115,16 +110,17 @@ export default class Server extends events.EventEmitter {
 			});
 
 			device.on('disconnected', ()=> {
-				that.emit('disconnections', ...device);
+				that.emit('disconnections', device);
 				that.devices.splice(that.devices.indexOf(device), 1);
 			});
 
 			this.devices.push(device);
 		}
 
-		createTcpServer(port){
+		private createTcpServer(port:number){
 			let that = this;
 			return new Promise((resolve, rejected) => {
+				
 				let server = net.createServer( connection => {
 					let deviceAdapter = new Device(that.getAdapter());
 
@@ -150,13 +146,13 @@ export default class Server extends events.EventEmitter {
 
 		}
 
-		createUdpServer(port){
+		private createUdpServer(port:number){
 			let that = this;
 			return new Promise((resolve, rejected) => {
 				let server = dgram.createSocket('udp4');
 
-				server.on('message', function (message, remote) {
-					const adapter = that.getAdapter().adapter(null);
+				server.on('message', (message, remote) => {
+					const adapter = that.getAdapter();
 					const parseMsg = adapter.parse_data(message);
 					const deviceId = parseMsg.device_id;
 

@@ -1,9 +1,11 @@
 import events = require('events');
+import { Iadapter } from './Iadapter';
+import { messageData, alarm, ping } from './interfaces/types';
 
 export class Device extends events.EventEmitter {
 
-    private uid: string;
-    private name: string;
+    private uid: number;
+    private _name: string;
     private maxTimeout: number = 120 * 1000;
     private timer: any = null;
     private isOffLine: boolean = false;
@@ -11,7 +13,7 @@ export class Device extends events.EventEmitter {
     private readonly OFF_LINE: string = 'off_line';
     private readonly ON_LINE: string = 'on_line';
 
-    constructor(private adapter: any) {
+    constructor(private adapter: Iadapter) {
         super();
 
         this.on("data", this.listenerInitData);
@@ -22,7 +24,7 @@ export class Device extends events.EventEmitter {
 
     private async listenerConnected() {
         this.isOffLine = true;
-        this.sendStatusOffLineAlarm({ cmd: this.ON_LINE });
+        this.sendStatusOffLineAlarm(this.ON_LINE);
 
         if (this.alarmOffLine)
             this.startTimerStatusOnline();
@@ -33,7 +35,7 @@ export class Device extends events.EventEmitter {
     private async listenerDisconnected() {
         this.isOffLine = false;
         this.stopTimerStatusOnline();
-        this.sendStatusOffLineAlarm({ cmd: this.OFF_LINE });
+        this.sendStatusOffLineAlarm(this.OFF_LINE);
         this.emit('disconnected');
     }
 
@@ -49,20 +51,19 @@ export class Device extends events.EventEmitter {
             throw "The adapter doesn't return the command (cmd) parameter";
 
         if (!this.uid) {
-            this.uid = msg_parts.device_id;
+            this.uid = parseInt(msg_parts.device_id);
             this.listenerConnected();
         }
 
         if (this.alarmOffLine) {
 
             if (!this.isOffLine)
-                this.sendStatusOffLineAlarm({ cmd: this.ON_LINE });
+                this.sendStatusOffLineAlarm(this.ON_LINE );
 
             that.isOffLine = true;
             that.startTimerStatusOnline();
         }
-
-
+        
         that.make_action(msg_parts.action, msg_parts);
     }
 
@@ -73,7 +74,7 @@ export class Device extends events.EventEmitter {
                 that.ping(msg_parts);
                 break;
             case "alarm":
-                that.receiveAlarm(msg_parts);
+                that.receiveAlarm(msg_parts.cmd,msg_parts);
                 break;
             case "other":
                 //that.adapter.run_other(msg_parts.cmd,msg_parts);
@@ -81,14 +82,14 @@ export class Device extends events.EventEmitter {
         }
     }
 
-    private async ping(msg_parts: any) {
+    private async ping(msg_parts: messageData) {
         try {
             let that = this;
-            let gpsData = await that.adapter.get_ping_data(msg_parts);
-
+            let gpsData:ping = that.adapter.get_ping_data(msg_parts);
+            
             if (!gpsData)
                 return;
-
+            
             gpsData.imei = that.uid;
             gpsData.inserted = new Date();
             gpsData.from_cmd = msg_parts.cmd;
@@ -99,25 +100,30 @@ export class Device extends events.EventEmitter {
         }
     }
 
-    private async receiveAlarm(msg_parts: any) {
-        const message = this.adapter.receive_alarm(msg_parts);
-        const details = await this.adapter.get_ping_data(msg_parts);
+    private async receiveAlarm(cmd: string, msg: messageData) {
+        let message:alarm | null = this.adapter.receive_alarm(cmd);
+        const details = await this.adapter.get_ping_data(msg);
         Object.assign(details, {
             imei: this.uid,
-            createAt: new Date(),
-            from_cmd: msg_parts.cmd,
+            from_cmd: cmd,
         });
+        
+        if(!message)
+            throw new Error('message is empty');
 
         this.emit("alarm", message.code, message, details);
     }
 
-    sendStatusOffLineAlarm(msg: object) {
+    sendStatusOffLineAlarm(msg: string) {
         const message = this.adapter.receive_alarm(msg);
         const details = {
             imei: this.uid,
-            createAt: new Date(),
             from_cmd: msg,
         };
+
+        if(!message)
+            throw new Error('message is empty');
+
         this.emit("alarm", message.code, message, details);
     }
 
@@ -126,7 +132,7 @@ export class Device extends events.EventEmitter {
         clearTimeout(this.timer);
         this.timer = setTimeout(() => {
             that.isOffLine = false;
-            that.sendStatusOffLineAlarm({ cmd: that.OFF_LINE });
+            that.sendStatusOffLineAlarm(that.OFF_LINE);
             this.emit('disconnected');
         }, that.maxTimeout);
     }
@@ -135,28 +141,28 @@ export class Device extends events.EventEmitter {
         clearTimeout(this.timer);
     }
 
-    /*set alarmOffline(status){
-      this._alarmOffLine = true;
+    set alarmOffline(status: boolean) {
+        this.alarmOffLine = true;
     }
-  
-    set maxInterval(time){
-      this._maxInterval = time;
+
+    set maxInterval(time: number) {
+        this.maxTimeout = time;
     }
-  
-    get name(){
-          return this._name;
-      }
-  
-      set name(name) {
-          this._name = name;
-      }
-  
-      get UID() {
-          return this._uid;
-      }
-  
-      set UID(uid) {
-          this._uid = uid;
-      }
-      */
+
+    get name() {
+        return this._name;
+    }
+
+    set name(name) {
+        this._name = name;
+    }
+
+    get UID() {
+        return this.uid;
+    }
+
+    set UID(uid) {
+        this.uid = uid;
+    }
+
 }
