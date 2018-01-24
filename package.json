@@ -2,11 +2,11 @@
   "name": "gp_ingts",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
     "start": "npm run build:live",
     "build:live": "nodemon --exec ./node_modules/.bin/ts-node -- ./src/index.ts",
-    "test": "tsc && mocha dist/**/*.spec.js"
+    "test": "tsc && mocha dist/**/*.spec.js && exit 1"
   },
   "keywords": [],
   "author": "",
