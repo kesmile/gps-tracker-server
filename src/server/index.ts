@@ -1,6 +1,7 @@
 //import 'babel-polyfill';
 import { Device } from './device';
 import { Iadapter } from './Iadapter';
+import { messageData } from './interfaces/types';
 
 import util	= require('util');
 import events = require('events');
@@ -95,8 +96,6 @@ export default class Server extends events.EventEmitter {
 			});
 
 			device.on('ping', msg => {
-				console.log('message');
-				
 				that.emit('tracker', msg, device)
 			});
 
@@ -139,9 +138,7 @@ export default class Server extends events.EventEmitter {
 				server.on('error', (err) => {
 				  console.log(err);
 				});
-				resolve({
-					connection: server
-				})
+				resolve(server);
 			});
 
 		}
@@ -153,8 +150,12 @@ export default class Server extends events.EventEmitter {
 
 				server.on('message', (message, remote) => {
 					const adapter = that.getAdapter();
-					const parseMsg = adapter.parse_data(message);
-					const deviceId = parseMsg.device_id;
+					const parseMsg:messageData | null = adapter.parse_data(message.toString());
+
+					if(!parseMsg)
+						return;
+
+					const deviceId = parseInt(parseMsg.device_id);
 
 					if(!deviceId){
 						console.log("device id null");
@@ -177,9 +178,7 @@ export default class Server extends events.EventEmitter {
 				});
 				server.bind(port);
 
-				resolve({
-					connection: server
-				});
+				resolve(server);
 			});
 		}
 

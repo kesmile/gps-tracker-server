@@ -1,4 +1,4 @@
-import * as _ from '@types/underscore';
+import * as _ from 'underscore';
 /*****************************************
 FUNCTIONS
 ******************************************/
