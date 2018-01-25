@@ -7,6 +7,7 @@
     "start": "npm run build:live",
     "build:live": "nodemon --exec ./node_modules/.bin/ts-node -- ./src/index.ts",
     "build": "tsc",
+    "prepublish": "npm run build",
     "test": "tsc && mocha dist/**/*.spec.js && exit 1"
   },
   "keywords": [],
@@ -24,5 +25,10 @@
   "dependencies": {
     "@types/underscore": "^1.8.7",
     "sinon": "^4.2.1"
+  },
+  "repository" :
+  { 
+    "type" : "git",
+    "url" : "https://github.com/kesmile/gps-tracker-server.git"
   }
 }
