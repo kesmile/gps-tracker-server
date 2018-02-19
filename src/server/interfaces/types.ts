@@ -16,12 +16,11 @@ export interface alarm {
 export interface ping {
     latitude: number,
     longitude: number,
-    time: Date,
     speed: number,
     orientation: number,
     mileage: number,
-    accurecy: number | null,
+    accuracy: number | null,
     imei: number | null,
     inserted: Date,
-    from_cmd: string | null
+    cmd: string | null
 }

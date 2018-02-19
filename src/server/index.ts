@@ -1,4 +1,3 @@
-//import 'babel-polyfill';
 import { Device } from './device';
 import { Iadapter } from './Iadapter';
 import { messageData } from './interfaces/types';
@@ -8,7 +7,6 @@ import events = require('events');
 import net	= require('net');
 import dgram = require('dgram');
 
-// https://github.com/RisingStack/node-typescript-starter
 export default class Server extends events.EventEmitter {
 
         private connections: any = {};
@@ -58,7 +56,7 @@ export default class Server extends events.EventEmitter {
 			let that = this;
 			return new Promise(async (resolve, rejected) => {
 				try {
-					let typeConnections = (typeof connections == 'string')? [ connections ] : connections;
+					let typeConnections = (typeof connections === 'string')? [ connections ] : connections;
 					let servers = { tcp: {}, udp: {} };
 					typeConnections.forEach(async (type:string) => {
 						switch (type) {
@@ -85,12 +83,9 @@ export default class Server extends events.EventEmitter {
 			let that = this;
 			let localDevice = this.devices.find(_device => _device.UID === deviceId);
 
-			if(localDevice) {
-				console.log('device not found');
+			if(localDevice)
 				return;
-			}
 				
-
 			device.on('connected', ()=> {
 				that.emit('connections', device);
 			});
@@ -136,7 +131,7 @@ export default class Server extends events.EventEmitter {
 				}).listen(port);
 
 				server.on('error', (err) => {
-				  console.log(err);
+				  console.error(err);
 				});
 				resolve(server);
 			});
@@ -150,7 +145,7 @@ export default class Server extends events.EventEmitter {
 
 				server.on('message', (message, remote) => {
 					const adapter = that.getAdapter();
-					const parseMsg:messageData | null = adapter.parse_data(message.toString());
+					const parseMsg:messageData | null = adapter.parseData(message.toString());
 
 					if(!parseMsg)
 						return;
@@ -158,14 +153,12 @@ export default class Server extends events.EventEmitter {
 					const deviceId = parseInt(parseMsg.device_id);
 
 					if(!deviceId){
-						console.log("device id null");
 						return;
 					}
 
 					let device = that.devices.find(device => device.UID === deviceId);
 
 					if(!device) {
-						console.log("new device");
 						device = new Device(that.getAdapter());
 						that.setListenerDevice(device);
 					}

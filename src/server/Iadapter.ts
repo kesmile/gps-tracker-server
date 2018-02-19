@@ -6,7 +6,7 @@ export interface Iadapter{
     port:number;
     debug:boolean;
 
-    parse_data( data:string ):messageData | null;
-    receive_alarm( msg_parts:string ):alarm | null;
-    get_ping_data( msg_parts:messageData ):ping;
+    parseData( data:string ):messageData | null;
+    getAlarm( msg:string ):alarm | null;
+    getPingData( msg:messageData ):ping;
 }

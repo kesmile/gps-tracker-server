@@ -41,17 +41,17 @@ export class Device extends events.EventEmitter {
 
     private async listenerInitData(data: string) {
         let that = this;
-        var msg_parts = that.adapter.parse_data(data);
+        var msg = that.adapter.parseData(data);
 
-        if (!msg_parts) {
+        if (!msg) {
             return;
         }
 
-        if (typeof (msg_parts.cmd) == "undefined")
-            throw "The adapter doesn't return the command (cmd) parameter";
+        if (!msg.cmd)
+            throw "The adapter doesn't return the command parameter";
 
         if (!this.uid) {
-            this.uid = parseInt(msg_parts.device_id);
+            this.uid = parseInt(msg.device_id);
             this.listenerConnected();
         }
 
@@ -64,35 +64,35 @@ export class Device extends events.EventEmitter {
             that.startTimerStatusOnline();
         }
         
-        that.make_action(msg_parts.action, msg_parts);
+        that.make_action(msg.action, msg);
     }
 
-    private make_action(action: string, msg_parts: any) {
+    private make_action(action: string, msg: any) {
         let that = this;
         switch (action) {
             case "ping":
-                that.ping(msg_parts);
+                that.ping(msg);
                 break;
             case "alarm":
-                that.receiveAlarm(msg_parts.cmd,msg_parts);
+                that.receiveAlarm(msg.cmd,msg);
                 break;
             case "other":
-                //that.adapter.run_other(msg_parts.cmd,msg_parts);
+                //TODO
                 break;
         }
     }
 
-    private async ping(msg_parts: messageData) {
+    private async ping(msg: messageData) {
         try {
             let that = this;
-            let gpsData:ping = that.adapter.get_ping_data(msg_parts);
+            let gpsData:ping = that.adapter.getPingData(msg);
             
             if (!gpsData)
                 return;
             
             gpsData.imei = that.uid;
             gpsData.inserted = new Date();
-            gpsData.from_cmd = msg_parts.cmd;
+            gpsData.cmd = msg.cmd;
 
             that.emit("ping", gpsData);
         } catch (error) {
@@ -101,8 +101,8 @@ export class Device extends events.EventEmitter {
     }
 
     private async receiveAlarm(cmd: string, msg: messageData) {
-        let message:alarm | null = this.adapter.receive_alarm(cmd);
-        const details = await this.adapter.get_ping_data(msg);
+        let message:alarm | null = this.adapter.getAlarm(cmd);
+        const details = await this.adapter.getPingData(msg);
         Object.assign(details, {
             imei: this.uid,
             from_cmd: cmd,
@@ -115,7 +115,7 @@ export class Device extends events.EventEmitter {
     }
 
     sendStatusOffLineAlarm(msg: string) {
-        const message = this.adapter.receive_alarm(msg);
+        const message = this.adapter.getAlarm(msg);
         const details = {
             imei: this.uid,
             from_cmd: msg,

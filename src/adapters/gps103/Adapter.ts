@@ -1,6 +1,6 @@
 import { Iadapter } from '../../server/Iadapter';
 import { messageData, alarm, ping } from '../../server/interfaces/types';
-import { minute_to_decimal } from '../../server/functions';
+import { minuteToDecimal } from '../../server/functions';
 
 export class Gps103Adapter implements Iadapter {
     connections: string[] = ['TCP', 'UDP'];
@@ -8,7 +8,7 @@ export class Gps103Adapter implements Iadapter {
     port: number = 5000;
     debug: boolean = false;
 
-    public parse_data(data: string): messageData {
+    public parseData(data: string): messageData {
         data = data.toString();
         let decode = data.split(',');
 
@@ -50,7 +50,7 @@ export class Gps103Adapter implements Iadapter {
 
         return pdata;
     }
-    public receive_alarm(cmd: string): alarm | null {
+    public getAlarm(cmd: string): alarm | null {
         switch (cmd) {
             case 'sensor alarm':
                 return { code: 'MOTION_SENSOR', msg: 'Shock alarm', type: 'ALARM' };
@@ -76,19 +76,18 @@ export class Gps103Adapter implements Iadapter {
                 return null;
         }
     }
-    public get_ping_data(msg_parts: messageData):ping {
-        let str = msg_parts.data;
+    public getPingData(msg: messageData):ping {
+        let str = msg.data;
         return {
-            latitude: minute_to_decimal(str[2], str[3]),
-            longitude: minute_to_decimal(str[4], str[5]),
-            time: new Date(),
+            latitude: minuteToDecimal(str[2], str[3]),
+            longitude: minuteToDecimal(str[4], str[5]),
             speed: parseInt(str[6]),
             orientation: 0,
             mileage: 0,
-            accurecy: null,
+            accuracy: null,
             imei: null,
             inserted: new Date(),
-            from_cmd: null
+            cmd: null
         }
     }
 
